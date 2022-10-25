@@ -22,11 +22,9 @@ const serializeNetworkSecurityMap = <NetworkSecurity, String>{
 };
 
 const MethodChannel _channel = const MethodChannel('wifi_iot');
-@Deprecated(
-    "This is discontinued, switch to new `wifi_scan` plugin by WiFiFlutter. "
+@Deprecated("This is discontinued, switch to new `wifi_scan` plugin by WiFiFlutter. "
     "Check - https://pub.dev/packages/wifi_scan")
-const EventChannel _eventChannel =
-    const EventChannel('plugins.wififlutter.io/wifi_scan');
+const EventChannel _eventChannel = const EventChannel('plugins.wififlutter.io/wifi_scan');
 
 class WiFiForIoTPlugin {
   /// Returns whether the WiFi AP is enabled or not
@@ -118,8 +116,7 @@ class WiFiForIoTPlugin {
 
   /// Get WiFi AP clients
   @Deprecated("This is will only work with < Android SDK 26.")
-  static Future<List<APClient>> getClientList(
-      bool onlyReachables, int reachableTimeout) async {
+  static Future<List<APClient>> getClientList(bool onlyReachables, int reachableTimeout) async {
     final Map<String, Object> htArguments = Map();
     htArguments["onlyReachables"] = onlyReachables;
     htArguments["reachableTimeout"] = reachableTimeout;
@@ -171,8 +168,7 @@ class WiFiForIoTPlugin {
     final Map<String, String> htArguments = Map();
     String? sResult;
     try {
-      sResult =
-          await _channel.invokeMethod('getWiFiAPPreSharedKey', htArguments);
+      sResult = await _channel.invokeMethod('getWiFiAPPreSharedKey', htArguments);
     } on MissingPluginException catch (e) {
       print("MissingPluginException : ${e.toString()}");
     }
@@ -191,25 +187,20 @@ class WiFiForIoTPlugin {
     }
   }
 
-  @Deprecated(
-      "This is discontinued, switch to new `wifi_scan` plugin by WiFiFlutter. "
+  @Deprecated("This is discontinued, switch to new `wifi_scan` plugin by WiFiFlutter. "
       "Check - https://pub.dev/packages/wifi_scan")
   static Stream<List<WifiNetwork>>? _onWifiScanResultReady;
 
-  @Deprecated(
-      "This is discontinued, switch to new `wifi_scan` plugin by WiFiFlutter. "
+  @Deprecated("This is discontinued, switch to new `wifi_scan` plugin by WiFiFlutter. "
       "Check - https://pub.dev/packages/wifi_scan")
   static Stream<List<WifiNetwork>> get onWifiScanResultReady {
     if (_onWifiScanResultReady == null) {
-      _onWifiScanResultReady = _eventChannel
-          .receiveBroadcastStream()
-          .map((dynamic event) => WifiNetwork.parse(event));
+      _onWifiScanResultReady = _eventChannel.receiveBroadcastStream().map((dynamic event) => WifiNetwork.parse(event));
     }
     return _onWifiScanResultReady!;
   }
 
-  @Deprecated(
-      "This is discontinued, switch to new `wifi_scan` plugin by WiFiFlutter. "
+  @Deprecated("This is discontinued, switch to new `wifi_scan` plugin by WiFiFlutter. "
       "Check - https://pub.dev/packages/wifi_scan")
   static Future<List<WifiNetwork>>? _loadWifiList() async {
     final Map<String, String> htArguments = Map();
@@ -224,8 +215,7 @@ class WiFiForIoTPlugin {
     return htResult;
   }
 
-  @Deprecated(
-      "This is discontinued, switch to new `wifi_scan` plugin by WiFiFlutter. "
+  @Deprecated("This is discontinued, switch to new `wifi_scan` plugin by WiFiFlutter. "
       "Check - https://pub.dev/packages/wifi_scan")
   static Future<List<WifiNetwork>> loadWifiList() async {
     final List<WifiNetwork> result = (await _loadWifiList() ?? <WifiNetwork>[]);
@@ -348,6 +338,47 @@ class WiFiForIoTPlugin {
     try {
       bResult = await _channel.invokeMethod('connect', {
         "ssid": ssid.toString(),
+        "bssid": bssid?.toString(),
+        "password": password?.toString(),
+        "join_once": joinOnce,
+        "with_internet": withInternet,
+        "is_hidden": isHidden,
+        "timeout_in_seconds": timeoutInSeconds,
+        "security": serializeNetworkSecurityMap[security],
+      });
+    } on MissingPluginException catch (e) {
+      print("MissingPluginException : ${e.toString()}");
+    }
+    return bResult ?? false;
+  }
+
+  static Future<bool> connectByPrefix(
+    String ssidPrefix, {
+    String? bssid,
+    String? password,
+    NetworkSecurity security = NetworkSecurity.NONE,
+    bool joinOnce = true,
+    bool withInternet = false,
+    bool isHidden = false,
+    int timeoutInSeconds = 30,
+  }) async {
+    // https://en.wikipedia.org/wiki/Service_set_(802.11_network)
+    // According to IEEE Std 802.11, a SSID must be between 0 and 32 bytes
+    // either with no encoding or UTF8-encoded.
+    // We do not accept 0 length SSID here since this is a probe request
+    // (wildcard SSID), and thus does not have meaning in the context of
+    // connecting to a specific network.
+    // TODO: support any binary sequence as required instead of just strings.
+    if (ssidPrefix.length == 0 || ssidPrefix.length > 32) {
+      print("Invalid SSID prefix");
+      return false;
+    }
+
+    if (!Platform.isIOS && !await isEnabled()) await setEnabled(true);
+    bool? bResult;
+    try {
+      bResult = await _channel.invokeMethod('connectByPrefix', {
+        "ssid": ssidPrefix.toString(),
         "bssid": bssid?.toString(),
         "password": password?.toString(),
         "join_once": joinOnce,
@@ -554,8 +585,7 @@ class WiFiForIoTPlugin {
     final Map<String, String> htArguments = Map();
     int? iResult;
     try {
-      iResult =
-          await _channel.invokeMethod('getCurrentSignalStrength', htArguments);
+      iResult = await _channel.invokeMethod('getCurrentSignalStrength', htArguments);
     } on MissingPluginException catch (e) {
       print("MissingPluginException : ${e.toString()}");
     }
@@ -604,8 +634,7 @@ class WiFiForIoTPlugin {
     htArguments["ssid"] = ssid;
     bool? bResult;
     try {
-      bResult =
-          await _channel.invokeMethod('isRegisteredWifiNetwork', htArguments);
+      bResult = await _channel.invokeMethod('isRegisteredWifiNetwork', htArguments);
     } on MissingPluginException catch (e) {
       print("MissingPluginException : ${e.toString()}");
     }
@@ -652,8 +681,7 @@ class APClient {
   }
 }
 
-@Deprecated(
-    "This is discontinued, switch to new `wifi_scan` plugin by WiFiFlutter. "
+@Deprecated("This is discontinued, switch to new `wifi_scan` plugin by WiFiFlutter. "
     "Check - https://pub.dev/packages/wifi_scan")
 class WifiNetwork {
   String? ssid;

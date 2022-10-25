@@ -31,6 +31,9 @@ public class SwiftWifiIotPlugin: NSObject, FlutterPlugin {
             case "connect": // OK
                 connect(call: call, result: result)
                 break;
+            case "connectByPrefix":
+                connectByPrefix(call: call, result: result)
+                break;
             case "isConnected": // OK
                 isConnected(result: result)
                 break;
@@ -136,37 +139,64 @@ public class SwiftWifiIotPlugin: NSObject, FlutterPlugin {
             let configuration = initHotspotConfiguration(ssid: sSSID, passphrase: sPassword, security: sSecurity)
             configuration.joinOnce = bJoinOnce ?? false
 
-            NEHotspotConfigurationManager.shared.apply(configuration) { [weak self] (error) in
-                guard let this = self else {
-                    print("WiFi network not found")
-                    result(false)
-                    return
-                }
-                this.getSSID { (sSSID) -> () in
-                    if (error != nil) {
-                        if (error?.localizedDescription == "already associated.") {
-                            print("Connected to '\(sSSID ?? "<Unknown Network>")'")
-                            result(true)
-                        } else {
-                            print("Not Connected")
-                            result(false)
-                        }
-                    } else if let ssid = sSSID {
-                        print("Connected to " + ssid)
-                        // ssid check is required because if wifi not found (could not connect) there seems to be no error given
-                        result(ssid == sSSID)
-                    } else {
-                        print("WiFi network not found")
-                        result(false)
-                    }
-                }
-            }
+            connectByConfiguration(configuration: configuration, result: result)
         } else {
             print("Not Connected")
             result(nil)
             return
         }
     }
+    
+    
+    
+    private func connectByPrefix(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let sSSIDPrefix = (call.arguments as? [String : AnyObject])?["ssidPrefix"] as! String
+        let _ = (call.arguments as? [String : AnyObject])?["bssid"] as? String? // not used
+        let sPassword = (call.arguments as? [String : AnyObject])?["password"] as? String? ?? nil
+        let bJoinOnce = (call.arguments as? [String : AnyObject])?["join_once"] as! Bool?
+        let sSecurity = (call.arguments as? [String : AnyObject])?["security"] as! String?
+        
+        if #available(iOS 13.0, *) {
+            let configuration = initHotspotConfigurationByPrefix(ssidPrefix:sSSIDPrefix, passphrase: sPassword, security: sSecurity)
+            configuration.joinOnce = bJoinOnce ?? false
+            connectByConfiguration(configuration: configuration, result: result)
+        } else {
+            print("Not Connected")
+            result(nil)
+            return
+        }
+    }
+    
+    
+    private func connectByConfiguration(configuration:NEHotspotConfiguration, result: @escaping FlutterResult){
+        NEHotspotConfigurationManager.shared.apply(configuration) { [weak self] (error) in
+            guard let this = self else {
+                print("WiFi network not found")
+                result(false)
+                return
+            }
+            this.getSSID { (sSSID) -> () in
+                if (error != nil) {
+                    if (error?.localizedDescription == "already associated.") {
+                        print("Connected to '\(sSSID ?? "<Unknown Network>")'")
+                        result(true)
+                    } else {
+                        print("Not Connected")
+                        result(false)
+                    }
+                } else if let ssid = sSSID {
+                    print("Connected to " + ssid)
+                    // ssid check is required because if wifi not found (could not connect) there seems to be no error given
+                    result(ssid == sSSID)
+                } else {
+                    print("WiFi network not found")
+                    result(false)
+                }
+            }
+        }
+    }
+
+    
 
     private func findAndConnect(call: FlutterMethodCall, result: @escaping FlutterResult) {
         result(FlutterMethodNotImplemented)
@@ -181,6 +211,19 @@ public class SwiftWifiIotPlugin: NSObject, FlutterPlugin {
                 return NEHotspotConfiguration.init(ssid: ssid, passphrase: passphrase!, isWEP: true)
             default:
                 return NEHotspotConfiguration.init(ssid: ssid)
+        }
+    }
+    
+    
+    @available(iOS 13.0, *)
+    private func initHotspotConfigurationByPrefix(ssidPrefix: String, passphrase: String?, security: String? = nil) -> NEHotspotConfiguration {
+        switch security?.uppercased() {
+            case "WPA":
+                return NEHotspotConfiguration.init(ssidPrefix: ssidPrefix, passphrase: passphrase!, isWEP: false)
+            case "WEP":
+                return NEHotspotConfiguration.init(ssidPrefix: ssidPrefix, passphrase: passphrase!, isWEP: true)
+            default:
+                return NEHotspotConfiguration.init(ssidPrefix: ssidPrefix)
         }
     }
 
