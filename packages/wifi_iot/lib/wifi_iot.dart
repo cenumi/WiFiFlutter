@@ -378,7 +378,7 @@ class WiFiForIoTPlugin {
     bool? bResult;
     try {
       bResult = await _channel.invokeMethod('connectByPrefix', {
-        "ssid": ssidPrefix.toString(),
+        "ssidPrefix": ssidPrefix.toString(),
         "bssid": bssid?.toString(),
         "password": password?.toString(),
         "join_once": joinOnce,
